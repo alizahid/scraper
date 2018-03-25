@@ -49,7 +49,7 @@ class Scraper {
     const currentNow = parseInt(headers.get('x-plan-qps-current')) + 2
     const maxNow = parseInt(headers.get('x-plan-qps-allotted'))
 
-    console.log('now', currentNow, maxNow)
+    console.log('\t', 'now', currentNow, maxNow)
 
     if (currentNow >= maxNow) {
       console.log('delaying')
@@ -60,25 +60,25 @@ class Scraper {
     const currentTotal = parseInt(headers.get('x-plan-quota-current')) + 5
     const maxTotal = parseInt(headers.get('x-plan-quota-allotted'))
 
-    console.log('total', currentTotal, maxTotal)
+    console.log('\t', 'total', currentTotal, maxTotal)
 
     if (currentTotal >= maxTotal) {
       this.switchKey()
     }
 
     if (status !== 200) {
-      console.log('invalid', id)
+      console.log('\t', 'invalid', id)
 
       return
     }
 
     const item = await response.json()
 
-    console.log('saving', id)
+    console.log('\t', 'saving', id)
 
     await this.add(item)
 
-    console.log('done', id)
+    console.log('\t', 'done', id)
   }
 
   add(item) {
@@ -98,7 +98,7 @@ class Scraper {
   }
 
   switchKey() {
-    console.log('switching key')
+    console.log('-', 'switching key')
 
     const { key } = this
 
