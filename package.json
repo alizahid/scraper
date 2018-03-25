@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "lodash.range": "^3.2.0",
+    "moment": "^2.21.0",
+    "mongodb": "^3.0.5",
+    "node-fetch": "^2.1.1"
+  }
+}
