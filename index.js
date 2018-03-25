@@ -7,6 +7,8 @@ const API_KEYS = [
   'v6eb33v33qmbav9cksf5mcr55zr6wsfc'
 ]
 
+const http = require('http')
+
 const fetch = require('node-fetch')
 const mongo = require('mongodb').MongoClient
 const moment = require('moment')
@@ -23,12 +25,37 @@ class Scraper {
 
       this.db = client.db('wowhead')
 
+      this.server = http.createServer(async (request, response) => {
+        const { current } = this
+
+        const last = await this.last()
+        const total = await this.count()
+
+        const json = {
+          current,
+          last,
+          total
+        }
+
+        const data = JSON.stringify(json)
+
+        response.setHeader('content-type', 'application/json')
+
+        response.end(data)
+      })
+
+      this.server.listen(3030, err => {
+        if (err) {
+          throw error
+        }
+      })
+
       this.start()
     })
   }
 
   async start() {
-    const start = await this.getLast()
+    const start = await this.last()
 
     const items = range(start + 1, 200000)
 
@@ -39,6 +66,8 @@ class Scraper {
 
   async fetch(id) {
     const { key } = this
+
+    this.current = id
 
     console.log('fetching', id)
 
@@ -122,25 +151,28 @@ class Scraper {
     return new Promise(resolve => setTimeout(resolve, time))
   }
 
-  getLast() {
+  async last() {
     const { db } = this
 
     const items = db.collection('items')
 
-    return new Promise((resolve, reject) =>
-      items
-        .find()
-        .sort({
-          id: -1
-        })
-        .toArray((err, items) => {
-          if (err) {
-            return reject(err)
-          }
+    const item = await items
+      .find()
+      .sort({
+        id: -1
+      })
+      .limit(1)
+      .toArray()
 
-          resolve(items[0].id)
-        })
-    )
+    return item.pop().id
+  }
+
+  count() {
+    const { db } = this
+
+    const items = db.collection('items')
+
+    return items.count()
   }
 }
 
