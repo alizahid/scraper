@@ -120,9 +120,7 @@ class Scraper {
 
     console.log('\t', 'saving')
 
-    await this.add(item)
-
-    console.log('\t', 'done')
+    this.add(item)
   }
 
   add(item) {
