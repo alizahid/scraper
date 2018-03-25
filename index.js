@@ -28,9 +28,11 @@ class Scraper {
   }
 
   async start() {
-    const ids = range(0, 200000)
+    const start = await this.getLast()
 
-    for (const id of ids) {
+    const items = range(start, 200000)
+
+    for (const id of items) {
       await this.fetch(id)
     }
   }
@@ -86,7 +88,7 @@ class Scraper {
 
     const items = db.collection('items')
 
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) =>
       items.insert(item, (err, result) => {
         if (err) {
           return reject(err)
@@ -94,7 +96,7 @@ class Scraper {
 
         resolve(result)
       })
-    })
+    )
   }
 
   switchKey() {
@@ -118,6 +120,27 @@ class Scraper {
       .diff(moment(), 'milliseconds')
 
     return new Promise(resolve => setTimeout(resolve, time))
+  }
+
+  getLast() {
+    const { db } = this
+
+    const items = db.collection('items')
+
+    return new Promise((resolve, reject) =>
+      items
+        .find()
+        .sort({
+          id: -1
+        })
+        .toArray((err, items) => {
+          if (err) {
+            return reject(err)
+          }
+
+          resolve(items[0].id)
+        })
+    )
   }
 }
 
