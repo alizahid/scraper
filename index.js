@@ -30,7 +30,7 @@ class Scraper {
   async start() {
     const start = await this.getLast()
 
-    const items = range(start, 200000)
+    const items = range(start + 1, 200000)
 
     for (const id of items) {
       await this.fetch(id)
