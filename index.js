@@ -26,7 +26,7 @@ class Scraper {
       this.db = client.db('wowhead')
 
       this.server = http.createServer(async (request, response) => {
-        const { current } = this
+        const { current, quotaNow, quota } = this
 
         const last = await this.last()
         const total = await this.count()
@@ -34,7 +34,9 @@ class Scraper {
         const json = {
           current,
           last,
-          total
+          total,
+          quotaNow,
+          quota
         }
 
         const data = JSON.stringify(json)
@@ -80,7 +82,10 @@ class Scraper {
     const currentNow = parseInt(headers.get('x-plan-qps-current')) + 2
     const maxNow = parseInt(headers.get('x-plan-qps-allotted'))
 
-    // console.log('\t', '\t', 'now', `${currentNow}/${maxNow}`)
+    this.quotaNow = {
+      curret: currentNow,
+      max: maxNow
+    }
 
     if (currentNow >= maxNow) {
       console.log('\t', '\t', 'delaying')
@@ -91,7 +96,10 @@ class Scraper {
     const currentTotal = parseInt(headers.get('x-plan-quota-current')) + 5
     const maxTotal = parseInt(headers.get('x-plan-quota-allotted'))
 
-    // console.log('\t', '\t', 'total', `${currentTotal}/${maxTotal}`)
+    this.quota = {
+      current: currentTotal,
+      max: maxTotal
+    }
 
     if (currentTotal >= maxTotal) {
       this.switchKey()
