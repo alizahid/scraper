@@ -98,6 +98,8 @@ class Scraper {
   }
 
   switchKey() {
+    console.log('switching key')
+
     const { key } = this
 
     const next = API_KEYS.findIndex(k => k === key) + 1
