@@ -75,9 +75,9 @@ class Scraper {
       return
     }
 
-    const items = range(start + 1, max)
+    const quests = range(start + 1, max)
 
-    for (const id of items) {
+    for (const id of quests) {
       await this.fetch(id)
     }
   }
@@ -90,7 +90,7 @@ class Scraper {
     console.log('fetching', id)
 
     const response = await fetch(
-      `https://us.api.battle.net/wow/item/${id}?locale=en_US&apikey=${key}`
+      `https://us.api.battle.net/wow/quest/${id}?locale=en_US&apikey=${key}`
     )
 
     const { headers, status } = response
@@ -127,20 +127,20 @@ class Scraper {
       return
     }
 
-    const item = await response.json()
+    const quest = await response.json()
 
     console.log('\t', 'saving')
 
-    this.add(item)
+    this.add(quest)
   }
 
-  add(item) {
+  add(quest) {
     const { db } = this
 
-    const items = db.collection('items')
+    const quests = db.collection('quests')
 
     return new Promise((resolve, reject) =>
-      items.insert(item, (err, result) => {
+      quests.insert(quest, (err, result) => {
         if (err) {
           return reject(err)
         }
@@ -176,9 +176,9 @@ class Scraper {
   async last() {
     const { db } = this
 
-    const items = db.collection('items')
+    const quests = db.collection('quests')
 
-    const item = await items
+    const quest = await quests
       .find()
       .sort({
         id: -1
@@ -186,15 +186,15 @@ class Scraper {
       .limit(1)
       .toArray()
 
-    return item.pop().id
+    return quest.pop().id
   }
 
   count() {
     const { db } = this
 
-    const items = db.collection('items')
+    const quests = db.collection('quests')
 
-    return items.count()
+    return quests.count()
   }
 }
 
