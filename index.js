@@ -29,7 +29,7 @@ class Scraper {
 
   async start() {
     const start = await this.last()
-    const max = 52000
+    const max = 13000
 
     if (start > max) {
       return
