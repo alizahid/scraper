@@ -29,7 +29,7 @@ class Scraper {
       this.server = http.createServer(async (request, response) => {
         const { url } = request
 
-        if (url === '/download') {
+        if (url === '/?download') {
           const src = fs.createReadStream('../wowhead.tar.gz')
 
           src.pipe(response)
