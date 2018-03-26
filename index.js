@@ -7,6 +7,7 @@ const API_KEYS = [
   'v6eb33v33qmbav9cksf5mcr55zr6wsfc'
 ]
 
+const fs = require('fs')
 const http = require('http')
 
 const fetch = require('node-fetch')
@@ -26,6 +27,16 @@ class Scraper {
       this.db = client.db('wowhead')
 
       this.server = http.createServer(async (request, response) => {
+        const { url } = request
+
+        if (url === '/download') {
+          const src = fs.createReadStream('../wowhead.tar.gz')
+
+          src.pipe(response)
+
+          return
+        }
+
         const { current, quotaNow, quota } = this
 
         const last = await this.last()
