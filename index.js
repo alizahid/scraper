@@ -30,7 +30,7 @@ class Scraper {
         const { url } = request
 
         if (url === '/download') {
-          const src = fs.createReadStream('../wowhead.tar.gz')
+          const src = fs.createReadStream('./wowhead.tar.gz')
 
           src.pipe(response)
 
