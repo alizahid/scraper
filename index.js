@@ -178,15 +178,15 @@ class Scraper {
 
     const quests = db.collection('quests')
 
-    const quest = await quests
+    const quest = (await quests
       .find()
       .sort({
         id: -1
       })
       .limit(1)
-      .toArray()
+      .toArray()).pop()
 
-    return quest.pop().id
+    return quest ? quest.id : 0
   }
 
   count() {
