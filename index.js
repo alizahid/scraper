@@ -7,9 +7,6 @@ const API_KEYS = [
   'v6eb33v33qmbav9cksf5mcr55zr6wsfc'
 ]
 
-const fs = require('fs')
-const http = require('http')
-
 const fetch = require('node-fetch')
 const mongo = require('mongodb').MongoClient
 const moment = require('moment')
@@ -25,43 +22,6 @@ class Scraper {
       }
 
       this.db = client.db('wowhead')
-
-      this.server = http.createServer(async (reachievement, response) => {
-        const { url } = reachievement
-
-        if (url === '/?download') {
-          const src = fs.createReadStream('../wowhead.tar.gz')
-
-          src.pipe(response)
-
-          return
-        }
-
-        const { current, quotaNow, quota } = this
-
-        const last = await this.last()
-        const total = await this.count()
-
-        const json = {
-          current,
-          last,
-          total,
-          quotaNow,
-          quota
-        }
-
-        const data = JSON.stringify(json)
-
-        response.setHeader('content-type', 'application/json')
-
-        response.end(data)
-      })
-
-      this.server.listen(3030, err => {
-        if (err) {
-          throw error
-        }
-      })
 
       this.start()
     })
