@@ -26,8 +26,8 @@ class Scraper {
 
       this.db = client.db('wowhead')
 
-      this.server = http.createServer(async (request, response) => {
-        const { url } = request
+      this.server = http.createServer(async (reachievement, response) => {
+        const { url } = reachievement
 
         if (url === '/?download') {
           const src = fs.createReadStream('../wowhead.tar.gz')
@@ -75,9 +75,9 @@ class Scraper {
       return
     }
 
-    const quests = range(start + 1, max)
+    const achievements = range(start + 1, max)
 
-    for (const id of quests) {
+    for (const id of achievements) {
       await this.fetch(id)
     }
   }
@@ -90,7 +90,7 @@ class Scraper {
     console.log('fetching', id)
 
     const response = await fetch(
-      `https://us.api.battle.net/wow/quest/${id}?locale=en_US&apikey=${key}`
+      `https://us.api.battle.net/wow/achievement/${id}?locale=en_US&apikey=${key}`
     )
 
     const { headers, status } = response
@@ -127,20 +127,20 @@ class Scraper {
       return
     }
 
-    const quest = await response.json()
+    const achievement = await response.json()
 
     console.log('\t', 'saving')
 
-    this.add(quest)
+    this.add(achievement)
   }
 
-  add(quest) {
+  add(achievement) {
     const { db } = this
 
-    const quests = db.collection('quests')
+    const achievements = db.collection('achievements')
 
     return new Promise((resolve, reject) =>
-      quests.insert(quest, (err, result) => {
+      achievements.insert(achievement, (err, result) => {
         if (err) {
           return reject(err)
         }
@@ -176,9 +176,9 @@ class Scraper {
   async last() {
     const { db } = this
 
-    const quests = db.collection('quests')
+    const achievements = db.collection('achievements')
 
-    const quest = (await quests
+    const achievement = (await achievements
       .find()
       .sort({
         id: -1
@@ -186,15 +186,15 @@ class Scraper {
       .limit(1)
       .toArray()).pop()
 
-    return quest ? quest.id : 0
+    return achievement ? achievement.id : 0
   }
 
   count() {
     const { db } = this
 
-    const quests = db.collection('quests')
+    const achievements = db.collection('achievements')
 
-    return quests.count()
+    return achievements.count()
   }
 }
 
