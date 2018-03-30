@@ -24,7 +24,7 @@ class Scraper {
         throw err
       }
 
-      this.db = client.db('wowhead')
+      this.db = client.db('bigglesworth')
 
       this.server = http.createServer(async (request, response) => {
         const { url } = request
@@ -63,8 +63,43 @@ class Scraper {
         }
       })
 
-      this.start()
+      this.data()
     })
+  }
+
+  async data() {
+    const data = [
+      {
+        id: 'pet',
+        collection: 'pets'
+      },
+      {
+        id: 'boss',
+        collection: 'bosses'
+      },
+      {
+        id: 'mount',
+        collection: 'mounts'
+      },
+      {
+        id: 'zone',
+        collection: 'zones'
+      }
+    ]
+
+    for (const type of data) {
+      const { id, collection } = type
+
+      const response = await fetch(
+        `https://us.api.battle.net/wow/${id}/?locale=en_US&apikey=${this.key}`
+      )
+
+      const json = await response.json()
+
+      for (const item of json[collection]) {
+        await this.add(item, collection)
+      }
+    }
   }
 
   async start() {
@@ -131,16 +166,16 @@ class Scraper {
 
     console.log('\t', 'saving')
 
-    this.add(quest)
+    this.add(quest, 'quests')
   }
 
-  add(quest) {
+  add(item, collection) {
     const { db } = this
 
-    const quests = db.collection('quests')
+    const items = db.collection(collection)
 
     return new Promise((resolve, reject) =>
-      quests.insert(quest, (err, result) => {
+      items.insert(item, (err, result) => {
         if (err) {
           return reject(err)
         }
