@@ -10,7 +10,6 @@ const {
 const { MongoClient: mongo } = require('mongodb')
 const { get, range } = require('lodash')
 const async = require('async')
-const moment = require('moment')
 const request = require('request-promise-native')
 
 class Scraper {
@@ -53,7 +52,7 @@ class Scraper {
             $set: data
           },
           {
-            $upsert: true
+            upsert: true
           }
         )
       }
@@ -223,12 +222,7 @@ class Scraper {
   }
 
   static delay() {
-    const time = moment()
-      .startOf('minute')
-      .add(1, 'minutes')
-      .diff(moment(), 'milliseconds')
-
-    return new Promise(resolve => setTimeout(resolve, time))
+    return new Promise(resolve => setTimeout(resolve, 1000))
   }
 }
 

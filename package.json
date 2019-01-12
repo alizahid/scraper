@@ -4,7 +4,6 @@
     "dotenv": "^6.2.0",
     "lodash": "^4.17.11",
     "lodash.range": "^3.2.0",
-    "moment": "^2.23.0",
     "mongodb": "^3.1.10",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5"
