@@ -200,8 +200,6 @@ class Scraper {
 
   static async request(uri) {
     try {
-      console.log('request', `https://us.api.blizzard.com/wow${uri}`)
-
       const response = request({
         uri: `https://us.api.blizzard.com/wow${uri}`,
         json: true,
