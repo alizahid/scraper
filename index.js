@@ -231,12 +231,14 @@ class Scraper {
       const { body, statusCode } = error
 
       if (statusCode === 429) {
+        console.log('request', 'throttled', uri)
+
         await this.delay()
 
         return this.request(uri)
       }
 
-      console.log('error', uri, JSON.stringify(body))
+      console.log('request', 'error', uri, JSON.stringify(body))
     }
   }
 
