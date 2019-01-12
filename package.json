@@ -1,8 +1,15 @@
 {
+  "scripts": {
+    "start": "node -r dotenv/config index.js"
+  },
   "dependencies": {
+    "async": "^2.6.1",
+    "dotenv": "^6.2.0",
+    "lodash": "^4.17.11",
     "lodash.range": "^3.2.0",
-    "moment": "^2.21.0",
-    "mongodb": "^3.0.5",
-    "node-fetch": "^2.1.1"
+    "moment": "^2.23.0",
+    "mongodb": "^3.1.10",
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.5"
   }
 }

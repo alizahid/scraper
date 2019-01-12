@@ -1,205 +1,226 @@
-const API_KEYS = [
-  'u23bhd59r763q3a5zbtn7tdjwc3qyu6z',
-  '4b55nn5e39n5ysvjrpdffedjdsh7zeqd',
-  'ud2c3qa8kevg72k36p5p2tus74h6hjc7',
-  'cqb42h7f596feq3qmgskc7kt9wm97g6v',
-  'ef4ejs8zy2d7dj2p3vjcwgef3h8ca2mc',
-  'v6eb33v33qmbav9cksf5mcr55zr6wsfc'
-]
+const {
+  BLIZZARD_CLIENT_ID,
+  BLIZZARD_CLIENT_SECRET,
+  MONGO_DB,
+  MONGO_URI
+} = process.env
 
-const fs = require('fs')
-const http = require('http')
-
-const fetch = require('node-fetch')
-const mongo = require('mongodb').MongoClient
+const { MongoClient: mongo } = require('mongodb')
+const { get, range } = require('lodash')
+const async = require('async')
 const moment = require('moment')
-const range = require('lodash.range')
+const request = require('request-promise-native')
 
 class Scraper {
-  constructor() {
-    this.key = API_KEYS[0]
+  static async init() {
+    this.queue = async.queue(async (task, callback) => {
+      const { type } = task
 
-    mongo.connect('mongodb://localhost:27017', (err, client) => {
-      if (err) {
-        throw err
+      if (type === 'collection') {
+        const { collection, key, parser, uri } = task
+
+        const response = await this.request(uri)
+
+        let data = get(response, key)
+
+        if (parser) {
+          data = parser(data)
+        }
+
+        console.log('collections', data.length, key)
+
+        await this.db.collection(collection || key).insertMany(data)
+      } else if (type === 'data') {
+        const { collection, id, uri } = task
+
+        const data = await this.request(uri.replace('{id}', id))
+
+        const query = {}
+
+        if (collection === 'pets') {
+          query.creatureId = data.creatureId
+        } else {
+          query.id = id
+        }
+
+        console.log('data', collection, id)
+
+        await this.db.collection(collection).updateOne(
+          query,
+          {
+            $set: data
+          },
+          {
+            $upsert: true
+          }
+        )
       }
 
-      this.db = client.db('bigglesworth')
+      callback()
+    }, 40)
 
-      this.server = http.createServer(async (request, response) => {
-        const { url } = request
+    this.queue.drain = () => {
+      process.exit()
+    }
 
-        if (url === '/?download') {
-          const src = fs.createReadStream('../wowhead.tar.gz')
+    const client = await mongo.connect(
+      MONGO_URI,
+      {
+        useNewUrlParser: true
+      }
+    )
 
-          src.pipe(response)
+    this.db = client.db(MONGO_DB)
 
-          return
-        }
+    await this.getAccessToken()
 
-        const { current, quotaNow, quota } = this
-
-        const last = await this.last()
-        const total = await this.count()
-
-        const json = {
-          current,
-          last,
-          total,
-          quotaNow,
-          quota
-        }
-
-        const data = JSON.stringify(json)
-
-        response.setHeader('content-type', 'application/json')
-
-        response.end(data)
-      })
-
-      this.server.listen(3030, err => {
-        if (err) {
-          throw error
-        }
-      })
-
-      this.data()
-    })
+    this.collections()
+    this.data()
   }
 
-  async data() {
-    const data = [
+  static async getAccessToken() {
+    const { access_token } = await request.post({
+      uri: 'https://us.battle.net/oauth/token',
+      json: true,
+      auth: {
+        username: BLIZZARD_CLIENT_ID,
+        password: BLIZZARD_CLIENT_SECRET
+      },
+      formData: {
+        grant_type: 'client_credentials'
+      }
+    })
+
+    this.accessToken = access_token
+  }
+
+  static async collections() {
+    const tasks = [
       {
-        id: 'pet',
-        collection: 'pets'
+        type: 'collection',
+        key: 'achievements',
+        uri: '/data/character/achievements',
+        parser: data =>
+          data.reduce((all, { achievements, categories }) => {
+            if (achievements) {
+              all.push(...achievements)
+            }
+
+            if (categories) {
+              categories.forEach(({ achievements }) => {
+                if (achievements) {
+                  all.push(...achievements)
+                }
+              })
+            }
+
+            return all
+          }, [])
       },
       {
-        id: 'boss',
-        collection: 'bosses'
+        type: 'collection',
+        key: 'bosses',
+        uri: '/boss/'
       },
       {
-        id: 'mount',
-        collection: 'mounts'
+        type: 'collection',
+        key: 'mounts',
+        uri: '/mount/'
       },
       {
-        id: 'zone',
-        collection: 'zones'
+        type: 'collection',
+        key: 'pets',
+        uri: '/pet/'
+      },
+      {
+        type: 'collection',
+        key: 'zones',
+        uri: '/zone/'
+      },
+      {
+        type: 'collection',
+        key: 'races',
+        collection: 'character_races',
+        uri: '/data/character/races'
+      },
+      {
+        type: 'collection',
+        key: 'classes',
+        collection: 'character_classes',
+        uri: '/data/character/classes'
+      },
+      {
+        type: 'collection',
+        key: 'classes',
+        collection: 'item_classes',
+        uri: '/data/item/classes'
       }
     ]
 
-    for (const type of data) {
-      const { id, collection } = type
+    this.queue.push(tasks)
+  }
 
-      const response = await fetch(
-        `https://us.api.battle.net/wow/${id}/?locale=en_US&apikey=${this.key}`
+  static async data() {
+    const tasks = [
+      {
+        collection: 'pets',
+        max: 2569 + 50,
+        uri: '/pet/species/{id}'
+      },
+      {
+        collection: 'items',
+        max: 166999 + 1000,
+        uri: '/item/{id}'
+      },
+      {
+        collection: 'quests',
+        max: 54978 + 200,
+        uri: '/quest/{id}'
+      }
+    ].reduce((tasks, { collection, max, uri }) => {
+      range(1, max).forEach(id =>
+        tasks.push({
+          collection,
+          id,
+          max,
+          uri,
+          type: 'data'
+        })
       )
 
-      const json = await response.json()
+      return tasks
+    }, [])
 
-      for (const item of json[collection]) {
-        await this.add(item, collection)
-      }
-    }
+    this.queue.push(tasks)
   }
 
-  async start() {
-    const start = await this.last()
-    const max = 52000
+  static async request(uri) {
+    try {
+      console.log('request', `https://us.api.blizzard.com/wow${uri}`)
 
-    if (start > max) {
-      return
-    }
-
-    const quests = range(start + 1, max)
-
-    for (const id of quests) {
-      await this.fetch(id)
-    }
-  }
-
-  async fetch(id) {
-    const { key } = this
-
-    this.current = id
-
-    console.log('fetching', id)
-
-    const response = await fetch(
-      `https://us.api.battle.net/wow/quest/${id}?locale=en_US&apikey=${key}`
-    )
-
-    const { headers, status } = response
-
-    const currentNow = parseInt(headers.get('x-plan-qps-current')) + 2
-    const maxNow = parseInt(headers.get('x-plan-qps-allotted'))
-
-    this.quotaNow = {
-      curret: currentNow,
-      max: maxNow
-    }
-
-    if (currentNow >= maxNow) {
-      console.log('\t', '\t', 'delaying')
-
-      await this.delay()
-    }
-
-    const currentTotal = parseInt(headers.get('x-plan-quota-current')) + 5
-    const maxTotal = parseInt(headers.get('x-plan-quota-allotted'))
-
-    this.quota = {
-      current: currentTotal,
-      max: maxTotal
-    }
-
-    if (currentTotal >= maxTotal) {
-      this.switchKey()
-    }
-
-    if (status !== 200) {
-      console.log('\t', 'invalid')
-
-      return
-    }
-
-    const quest = await response.json()
-
-    console.log('\t', 'saving')
-
-    this.add(quest, 'quests')
-  }
-
-  add(item, collection) {
-    const { db } = this
-
-    const items = db.collection(collection)
-
-    return new Promise((resolve, reject) =>
-      items.insert(item, (err, result) => {
-        if (err) {
-          return reject(err)
+      const response = request({
+        uri: `https://us.api.blizzard.com/wow${uri}`,
+        json: true,
+        headers: {
+          authorization: `Bearer ${this.accessToken}`
         }
-
-        resolve(result)
       })
-    )
-  }
 
-  switchKey() {
-    console.log('-', 'switching key')
+      return response
+    } catch (error) {
+      const { body, statusCode } = error
 
-    const { key } = this
+      if (statusCode === 429) {
+        await this.delay()
 
-    const next = API_KEYS.findIndex(k => k === key) + 1
+        return this.request(uri)
+      }
 
-    if (API_KEYS[next]) {
-      this.key = API_KEYS[next]
-    } else {
-      this.key = API_KEYS[0]
+      console.log('error', uri, JSON.stringify(body))
     }
   }
 
-  delay() {
+  static delay() {
     const time = moment()
       .startOf('minute')
       .add(1, 'minutes')
@@ -207,30 +228,6 @@ class Scraper {
 
     return new Promise(resolve => setTimeout(resolve, time))
   }
-
-  async last() {
-    const { db } = this
-
-    const quests = db.collection('quests')
-
-    const quest = (await quests
-      .find()
-      .sort({
-        id: -1
-      })
-      .limit(1)
-      .toArray()).pop()
-
-    return quest ? quest.id : 0
-  }
-
-  count() {
-    const { db } = this
-
-    const quests = db.collection('quests')
-
-    return quests.count()
-  }
 }
 
-const scraper = new Scraper()
+Scraper.init()
