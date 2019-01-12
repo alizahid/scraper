@@ -17,11 +17,13 @@ const request = require('request-promise-native')
 
 class Scraper {
   static async init() {
+    const start = Date.now()
+
     this.queue = async.queue(async (task, callback) => {
       const { type } = task
 
       if (type === 'collection') {
-        const { collection, key, parser, uri } = task
+        const { collection, key, parser, primaryKey, uri } = task
 
         const response = await this.request(uri)
 
@@ -33,7 +35,21 @@ class Scraper {
 
         console.log('collections', data.length, key)
 
-        await this.db.collection(collection || key).insertMany(data)
+        await Promise.all(
+          data.map(item =>
+            this.db.collection(collection || key).updateOne(
+              {
+                [primaryKey || 'id']: item[primaryKey || 'id']
+              },
+              {
+                $set: item
+              },
+              {
+                upsert: true
+              }
+            )
+          )
+        )
       } else if (type === 'data') {
         const { collection, id, uri } = task
 
@@ -64,6 +80,8 @@ class Scraper {
     }, 40)
 
     this.queue.drain = () => {
+      console.log('done', Date.now() - start / 1000)
+
       process.exit()
     }
 
@@ -101,7 +119,6 @@ class Scraper {
   static async collections() {
     const tasks = [
       {
-        type: 'collection',
         key: 'achievements',
         uri: '/data/character/achievements',
         parser: data =>
@@ -122,46 +139,47 @@ class Scraper {
           }, [])
       },
       {
-        type: 'collection',
         key: 'bosses',
         uri: '/boss/'
       },
       {
-        type: 'collection',
         key: 'mounts',
+        primaryKey: 'spellId',
         uri: '/mount/'
       },
       {
-        type: 'collection',
         key: 'pets',
+        primaryKey: 'creatureId',
         uri: '/pet/'
       },
       {
-        type: 'collection',
         key: 'zones',
         uri: '/zone/'
       },
       {
-        type: 'collection',
-        key: 'races',
         collection: 'character_races',
+        key: 'races',
         uri: '/data/character/races'
       },
       {
-        type: 'collection',
-        key: 'classes',
         collection: 'character_classes',
+        key: 'classes',
         uri: '/data/character/classes'
       },
       {
-        type: 'collection',
-        key: 'classes',
         collection: 'item_classes',
+        key: 'classes',
+        primaryKey: 'class',
         uri: '/data/item/classes'
       }
     ]
 
-    this.queue.push(tasks)
+    this.queue.push(
+      tasks.map(collection => ({
+        ...collection,
+        type: 'collection'
+      }))
+    )
   }
 
   static async data() {
