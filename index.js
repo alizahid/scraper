@@ -77,7 +77,7 @@ class Scraper {
       }
 
       callback()
-    }, 40)
+    }, 80)
 
     this.queue.drain = () => {
       console.log('done', Date.now() - start / 1000)
