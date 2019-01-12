@@ -1,5 +1,3 @@
-require('dotenv').config()
-
 const {
   BLIZZARD_CLIENT_ID,
   BLIZZARD_CLIENT_SECRET,
@@ -19,10 +17,101 @@ class Scraper {
   static async init() {
     const start = Date.now()
 
-    this.queue = async.queue(async (task, callback) => {
-      const { type } = task
+    const client = await mongo.connect(
+      MONGO_URI,
+      {
+        useNewUrlParser: true
+      }
+    )
 
-      if (type === 'collection') {
+    this.db = client.db(MONGO_DB)
+
+    await this.getAccessToken()
+
+    await this.collections()
+    await this.data()
+
+    console.log('done', Date.now() - start / 1000)
+
+    process.exit()
+  }
+
+  static async getAccessToken() {
+    const { access_token } = await request.post({
+      uri: 'https://us.battle.net/oauth/token',
+      json: true,
+      auth: {
+        username: BLIZZARD_CLIENT_ID,
+        password: BLIZZARD_CLIENT_SECRET
+      },
+      formData: {
+        grant_type: 'client_credentials'
+      }
+    })
+
+    this.accessToken = access_token
+  }
+
+  static collections() {
+    return new Promise(resolve => {
+      const tasks = [
+        {
+          key: 'achievements',
+          uri: '/data/character/achievements',
+          parser: data =>
+            data.reduce((data, { achievements, categories }) => {
+              if (achievements) {
+                data.push(...achievements)
+              }
+
+              if (categories) {
+                categories.forEach(({ achievements }) => {
+                  if (achievements) {
+                    data.push(...achievements)
+                  }
+                })
+              }
+
+              return data
+            }, [])
+        },
+        {
+          key: 'bosses',
+          uri: '/boss/'
+        },
+        {
+          key: 'mounts',
+          primaryKey: 'spellId',
+          uri: '/mount/'
+        },
+        {
+          key: 'pets',
+          primaryKey: 'creatureId',
+          uri: '/pet/'
+        },
+        {
+          key: 'zones',
+          uri: '/zone/'
+        },
+        {
+          collection: 'character_races',
+          key: 'races',
+          uri: '/data/character/races'
+        },
+        {
+          collection: 'character_classes',
+          key: 'classes',
+          uri: '/data/character/classes'
+        },
+        {
+          collection: 'item_classes',
+          key: 'classes',
+          primaryKey: 'class',
+          uri: '/data/item/classes'
+        }
+      ]
+
+      const queue = async.queue(async (task, callback) => {
         const { collection, key, parser, primaryKey, uri } = task
 
         const response = await this.request(uri)
@@ -33,7 +122,7 @@ class Scraper {
           data = parser(data)
         }
 
-        console.log('collections', data.length, key)
+        console.log('collections', key, data.length)
 
         await Promise.all(
           data.map(item =>
@@ -50,7 +139,49 @@ class Scraper {
             )
           )
         )
-      } else if (type === 'data') {
+
+        callback()
+      }, 80)
+
+      queue.drain = () => resolve()
+
+      queue.push(tasks)
+    })
+  }
+
+  static async data() {
+    return new Promise(resolve => {
+      const tasks = [
+        {
+          collection: 'pets',
+          max: Number(MAX_PETS),
+          uri: '/pet/species/{id}'
+        },
+        {
+          collection: 'items',
+          max: Number(MAX_ITEMS),
+          uri: '/item/{id}'
+        },
+        {
+          collection: 'quests',
+          max: Number(MAX_QUESTS),
+          uri: '/quest/{id}'
+        }
+      ].reduce((tasks, { collection, max, uri }) => {
+        range(1, max).forEach(id =>
+          tasks.push({
+            collection,
+            id,
+            max,
+            uri,
+            type: 'data'
+          })
+        )
+
+        return tasks
+      }, [])
+
+      const queue = async.queue(async (task, callback) => {
         const { collection, id, uri } = task
 
         const data = await this.request(uri.replace('{id}', id))
@@ -74,146 +205,14 @@ class Scraper {
             upsert: true
           }
         )
-      }
 
-      callback()
-    }, 80)
+        callback()
+      }, 80)
 
-    this.queue.drain = () => {
-      console.log('done', Date.now() - start / 1000)
+      queue.drain = () => resolve()
 
-      process.exit()
-    }
-
-    const client = await mongo.connect(
-      MONGO_URI,
-      {
-        useNewUrlParser: true
-      }
-    )
-
-    this.db = client.db(MONGO_DB)
-
-    await this.getAccessToken()
-
-    this.collections()
-    this.data()
-  }
-
-  static async getAccessToken() {
-    const { access_token } = await request.post({
-      uri: 'https://us.battle.net/oauth/token',
-      json: true,
-      auth: {
-        username: BLIZZARD_CLIENT_ID,
-        password: BLIZZARD_CLIENT_SECRET
-      },
-      formData: {
-        grant_type: 'client_credentials'
-      }
+      queue.push(tasks)
     })
-
-    this.accessToken = access_token
-  }
-
-  static async collections() {
-    const tasks = [
-      {
-        key: 'achievements',
-        uri: '/data/character/achievements',
-        parser: data =>
-          data.reduce((all, { achievements, categories }) => {
-            if (achievements) {
-              all.push(...achievements)
-            }
-
-            if (categories) {
-              categories.forEach(({ achievements }) => {
-                if (achievements) {
-                  all.push(...achievements)
-                }
-              })
-            }
-
-            return all
-          }, [])
-      },
-      {
-        key: 'bosses',
-        uri: '/boss/'
-      },
-      {
-        key: 'mounts',
-        primaryKey: 'spellId',
-        uri: '/mount/'
-      },
-      {
-        key: 'pets',
-        primaryKey: 'creatureId',
-        uri: '/pet/'
-      },
-      {
-        key: 'zones',
-        uri: '/zone/'
-      },
-      {
-        collection: 'character_races',
-        key: 'races',
-        uri: '/data/character/races'
-      },
-      {
-        collection: 'character_classes',
-        key: 'classes',
-        uri: '/data/character/classes'
-      },
-      {
-        collection: 'item_classes',
-        key: 'classes',
-        primaryKey: 'class',
-        uri: '/data/item/classes'
-      }
-    ]
-
-    this.queue.push(
-      tasks.map(collection => ({
-        ...collection,
-        type: 'collection'
-      }))
-    )
-  }
-
-  static async data() {
-    const tasks = [
-      {
-        collection: 'pets',
-        max: Number(MAX_PETS),
-        uri: '/pet/species/{id}'
-      },
-      {
-        collection: 'items',
-        max: Number(MAX_ITEMS),
-        uri: '/item/{id}'
-      },
-      {
-        collection: 'quests',
-        max: Number(MAX_QUESTS),
-        uri: '/quest/{id}'
-      }
-    ].reduce((tasks, { collection, max, uri }) => {
-      range(1, max).forEach(id =>
-        tasks.push({
-          collection,
-          id,
-          max,
-          uri,
-          type: 'data'
-        })
-      )
-
-      return tasks
-    }, [])
-
-    this.queue.push(tasks)
   }
 
   static async request(uri) {

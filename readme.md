@@ -1,6 +1,6 @@
-# WoWdb scraper
+# WoWdb miner
 
-This script runs weekly and fetches new data from the Blizzard APIs.
+miner runs weekly and fetches data from the Blizzard APIs.
 
 ### Todo
 
