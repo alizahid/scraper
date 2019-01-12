@@ -3,6 +3,9 @@ require('dotenv').config()
 const {
   BLIZZARD_CLIENT_ID,
   BLIZZARD_CLIENT_SECRET,
+  MAX_ITEMS,
+  MAX_PETS,
+  MAX_QUESTS,
   MONGO_DB,
   MONGO_URI
 } = process.env
@@ -165,17 +168,17 @@ class Scraper {
     const tasks = [
       {
         collection: 'pets',
-        max: 2569 + 50,
+        max: Number(MAX_PETS),
         uri: '/pet/species/{id}'
       },
       {
         collection: 'items',
-        max: 166999 + 1000,
+        max: Number(MAX_ITEMS),
         uri: '/item/{id}'
       },
       {
         collection: 'quests',
-        max: 54978 + 200,
+        max: Number(MAX_QUESTS),
         uri: '/quest/{id}'
       }
     ].reduce((tasks, { collection, max, uri }) => {
