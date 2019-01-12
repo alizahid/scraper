@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const {
   BLIZZARD_CLIENT_ID,
   BLIZZARD_CLIENT_SECRET,
