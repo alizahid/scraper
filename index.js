@@ -4,6 +4,7 @@ const {
   MAX_ITEMS,
   MAX_PETS,
   MAX_QUESTS,
+  MAX_SPELLS,
   MONGO_DB,
   MONGO_URI
 } = process.env
@@ -166,6 +167,11 @@ class Scraper {
           collection: 'quests',
           max: Number(MAX_QUESTS),
           uri: '/quest/{id}'
+        },
+        {
+          collection: 'spells',
+          max: Number(MAX_SPELLS),
+          uri: '/spell/{id}'
         }
       ].reduce((tasks, { collection, max, uri }) => {
         range(1, max).forEach(id =>
