@@ -6,7 +6,8 @@ const {
   MAX_QUESTS,
   MAX_SPELLS,
   MONGO_DB,
-  MONGO_URI
+  MONGO_URI,
+  SEARCH_URI
 } = process.env
 
 const { MongoClient: mongo } = require('mongodb')
@@ -31,6 +32,8 @@ class Scraper {
 
     await this.collections()
     await this.data()
+
+    await request(SEARCH_URI + '?action=reload')
 
     console.log('done', Date.now() - start / 1000)
 
