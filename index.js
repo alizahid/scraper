@@ -33,7 +33,7 @@ class Scraper {
     await this.collections()
     await this.data()
 
-    await request(SEARCH_URI + '?action=reload')
+    await request(SEARCH_URI + '/reload')
 
     console.log('done', Date.now() - start / 1000)
 
