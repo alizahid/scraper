@@ -1,6 +1,7 @@
 const {
   BLIZZARD_CLIENT_ID,
   BLIZZARD_CLIENT_SECRET,
+  DEBUG,
   MAX_ITEMS,
   MAX_PETS,
   MAX_QUESTS,
@@ -15,16 +16,15 @@ const { get, range } = require('lodash')
 const async = require('async')
 const request = require('request-promise-native')
 
+const debug = DEBUG === 'true'
+
 class Scraper {
   static async init() {
     const start = Date.now()
 
-    const client = await mongo.connect(
-      MONGO_URI,
-      {
-        useNewUrlParser: true
-      }
-    )
+    const client = await mongo.connect(MONGO_URI, {
+      useNewUrlParser: true
+    })
 
     this.db = client.db(MONGO_DB)
 
@@ -126,8 +126,6 @@ class Scraper {
           data = parser(data)
         }
 
-        console.log('collections', key, data.length)
-
         await Promise.all(
           data.map(item =>
             this.db.collection(collection || key).updateOne(
@@ -158,22 +156,22 @@ class Scraper {
       const tasks = [
         {
           collection: 'pets',
-          max: Number(MAX_PETS),
+          max: debug ? 1 : Number(MAX_PETS),
           uri: '/pet/species/{id}'
         },
         {
           collection: 'items',
-          max: Number(MAX_ITEMS),
+          max: debug ? 1 : Number(MAX_ITEMS),
           uri: '/item/{id}'
         },
         {
           collection: 'quests',
-          max: Number(MAX_QUESTS),
+          max: debug ? 1 : Number(MAX_QUESTS),
           uri: '/quest/{id}'
         },
         {
           collection: 'spells',
-          max: Number(MAX_SPELLS),
+          max: debug ? 1 : Number(MAX_SPELLS),
           uri: '/spell/{id}'
         }
       ].reduce((tasks, { collection, max, uri }) => {
@@ -202,8 +200,6 @@ class Scraper {
         } else {
           query.id = id
         }
-
-        console.log('data', collection, id)
 
         await this.db.collection(collection).updateOne(
           query,
@@ -245,8 +241,6 @@ class Scraper {
 
         return this.request(uri)
       }
-
-      console.log('request', 'error', uri, JSON.stringify(body))
     }
   }
 
