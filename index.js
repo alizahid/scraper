@@ -146,7 +146,7 @@ class Scraper {
         callback()
       }, 80)
 
-      queue.drain = () => resolve()
+      queue.drain(resolve)
 
       queue.push(tasks)
     })
@@ -215,7 +215,7 @@ class Scraper {
         callback()
       }, 80)
 
-      queue.drain = () => resolve()
+      queue.drain(resolve)
 
       queue.push(tasks)
     })
