@@ -23,7 +23,8 @@ class Scraper {
     const start = Date.now()
 
     const client = await mongo.connect(MONGO_URI, {
-      useNewUrlParser: true
+      useNewUrlParser: true,
+      useUnifiedTopology: true
     })
 
     this.db = client.db(MONGO_DB)
