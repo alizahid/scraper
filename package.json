@@ -19,7 +19,7 @@
   "dependencies": {
     "async": "^3.1.0",
     "dotenv": "^8.1.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "lodash.range": "^3.2.0",
     "mongodb": "^3.3.0",
     "request": "^2.88.0",
