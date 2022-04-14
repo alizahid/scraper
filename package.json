@@ -17,7 +17,7 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "async": "^3.1.0",
+    "async": "^3.2.2",
     "dotenv": "^8.1.0",
     "lodash": "^4.17.15",
     "lodash.range": "^3.2.0",
